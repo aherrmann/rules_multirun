@@ -40,12 +40,15 @@ def _command_impl(ctx):
         "%s" % shell.quote(ctx.expand_location(v, targets = expansion_targets))
         for v in ctx.attr.arguments
     ]
+    cd_command = ""
+    if ctx.attr.run_from_workspace_root:
+        cd_command = 'cd "$BUILD_WORKSPACE_DIRECTORY"'
     command_exec = " ".join(["exec ./%s" % shell.quote(executable.short_path)] + str_args + ['"$@"\n'])
 
     out_file = ctx.actions.declare_file(ctx.label.name + ".bash")
     ctx.actions.write(
         output = out_file,
-        content = "\n".join([RUNFILES_PREFIX] + str_env + [command_exec]),
+        content = "\n".join([RUNFILES_PREFIX] + str_env + [cd_command, command_exec]),
         is_executable = True,
     )
     return [
@@ -75,6 +78,10 @@ command = rule(
             executable = True,
             doc = "Target to run",
             cfg = _force_opt,
+        ),
+        "run_from_workspace_root": attr.bool(
+            default = False,
+            doc = "If true, the command will be run from the workspace root instead of the execution root",
         ),
         "_bash_runfiles": attr.label(
             default = Label("@bazel_tools//tools/bash/runfiles"),
